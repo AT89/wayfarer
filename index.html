@@ -54,7 +54,8 @@ button:disabled{opacity:.6}
       rad=document.getElementById('rad'),chips=document.getElementById('chips'),note=document.getElementById('note'),
       where=document.getElementById('where');
   var items=[],filter='All';
-  var MIRRORS=['https://overpass-api.de/api/interpreter','https://overpass.kumi.systems/api/interpreter'];
+  var MIRRORS=['https://overpass-api.de/api/interpreter','https://overpass.private.coffee/api/interpreter','https://overpass.kumi.systems/api/interpreter'];
+  var maxKm=80;
   try{var z=localStorage.getItem('wf_zip');if(z)zip.value=z;}catch(e){}
 
   function el(tag,cls,txt){var e=document.createElement(tag);if(cls)e.className=cls;if(txt!=null)e.textContent=txt;return e;}
@@ -66,11 +67,14 @@ button:disabled{opacity:.6}
   async function overpass(q){
     var err;
     for(var i=0;i<MIRRORS.length;i++){
+      var ctl=new AbortController(),tm=setTimeout(function(c){return function(){c.abort();};}(ctl),30000);
       try{
-        var r=await fetch(MIRRORS[i],{method:'POST',body:'data='+encodeURIComponent(q),headers:{'Content-Type':'application/x-www-form-urlencoded'}});
+        var r=await fetch(MIRRORS[i]+'?data='+encodeURIComponent(q),{signal:ctl.signal});
         if(!r.ok)throw new Error('HTTP '+r.status);
-        return await r.json();
-      }catch(e){err=e;}
+        var j=await r.json();
+        if(j.remark&&/error|timed out/i.test(j.remark)&&!(j.elements&&j.elements.length))throw new Error(j.remark);
+        clearTimeout(tm);return j;
+      }catch(e){clearTimeout(tm);err=e;}
     }
     throw err;
   }
@@ -88,7 +92,8 @@ button:disabled{opacity:.6}
       if(la==null||lo==null)return;
       var type=t.tourism==='viewpoint'?'Viewpoint':'Drive';
       var key=type+'|'+name.toLowerCase();if(seen[key])return;seen[key]=1;
-      var d=km(lat,lon,la,lo),notable=!!(t.wikipedia||t.wikidata||t.description||t.website);
+      var d=km(lat,lon,la,lo);if(d>maxKm)return;
+      var notable=!!(t.wikipedia||t.wikidata||t.description||t.website);
       list.push({name:name,type:type,lat:la,lon:lo,km:d,notable:notable,score:d-(notable?40:0),
         ele:t.ele,desc:t.description,web:t.website,wiki:wikiUrl(t.wikipedia),ref:t.ref||t.network});
     });
@@ -141,18 +146,22 @@ button:disabled{opacity:.6}
       var zj=await zr.json(),p=zj.places[0],lat=parseFloat(p.latitude),lon=parseFloat(p.longitude);
       where.textContent='Near '+p['place name']+', '+p['state abbreviation'];where.hidden=false;
       msg('Scouting scenic spots… this can take a few seconds.');
-      var R=Math.round(parseInt(rad.value,10)*1609.34),at='(around:'+R+','+lat+','+lon+')';
-      var q='[out:json][timeout:25];('+
-        'node["tourism"="viewpoint"]["name"]'+at+';'+
-        'relation["route"="road"]["name"~"Scenic|Parkway|Byway|Skyline|Overlook",i]'+at+';'+
-        'way["scenic"="yes"]["highway"]["name"]'+at+';'+
-        ');out center tags 400;';
-      var data=await overpass(q);
-      items=build(data,lat,lon);filter='All';
+      var mi=parseInt(rad.value,10);maxKm=mi*1.609;
+      var dl=maxKm/111,dn=dl/Math.cos(lat*Math.PI/180);
+      var bb='('+(lat-dl).toFixed(4)+','+(lon-dn).toFixed(4)+','+(lat+dl).toFixed(4)+','+(lon+dn).toFixed(4)+')';
+      var qv='[out:json][timeout:25];node["tourism"="viewpoint"]["name"]'+bb+';out 300;';
+      var qd='[out:json][timeout:25];(relation["route"="road"]["name"~"Scenic|Parkway|Byway|Skyline|Overlook",i]'+bb+';way["scenic"="yes"]["highway"]["name"]'+bb+';);out center tags 300;';
+      var vEls=[],dEls=[],dErr=null;filter='All';
+      var vd=await overpass(qv);vEls=vd.elements||[];
+      items=build({elements:vEls},lat,lon);
+      if(items.length){renderChips();render();}else{msg('Looking for scenic drives…');}
+      try{var dd=await overpass(qd);dEls=dd.elements||[];}catch(e2){dErr=e2;}
+      items=build({elements:vEls.concat(dEls)},lat,lon);
       if(!items.length){msg('No named scenic spots found. Try a larger radius.');}
       else{renderChips();render();}
       note.hidden=false;
-    }catch(e){msg('Couldn’t load results. The map data service may be busy, so please try again in a moment.');}
+      if(dErr){var n=el('div','msg','Scenic drives couldn’t be loaded this time ('+(dErr.message||'network error')+'). Tap Explore to retry.');out.insertBefore(n,out.firstChild);}
+    }catch(e){msg('Couldn’t load results ('+((e&&e.message)||'network error')+'). The map data service may be busy, so please try again in a moment.');}
     go.disabled=false;
   });
 })();
