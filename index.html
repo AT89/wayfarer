@@ -12,126 +12,122 @@
 body{margin:0;background:var(--bg);color:var(--text);font-family:Georgia,"Times New Roman",serif;line-height:1.5}
 main{max-width:720px;margin:0 auto;padding:28px 18px 56px}
 h1{font-size:2rem;margin:0 0 4px;letter-spacing:-.5px}
+h3{font-family:system-ui,sans-serif;font-size:.8rem;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);margin:26px 0 0}
 .sub{color:var(--muted);margin:0 0 22px;font-family:system-ui,sans-serif;font-size:.95rem}
 form{display:flex;gap:8px}
-input,select{padding:14px 12px;font-size:1.05rem;border:1px solid var(--border);border-radius:12px;background:var(--surface);color:var(--text)}
-input{flex:1;min-width:0;letter-spacing:2px;padding-left:16px}
-select{font-family:system-ui,sans-serif;font-size:.9rem}
-button{font-family:system-ui,sans-serif;font-size:1rem;border:0;border-radius:12px;padding:0 20px;background:var(--accent);color:var(--accent-text);font-weight:600;cursor:pointer;min-height:48px}
-button:disabled{opacity:.6}
+input{flex:1;min-width:0;padding:14px 16px;font-size:1.1rem;letter-spacing:2px;border:1px solid var(--border);border-radius:12px;background:var(--surface);color:var(--text)}
+button,.btn{font-family:system-ui,sans-serif;font-size:1rem;border:0;border-radius:12px;padding:0 20px;background:var(--accent);color:var(--accent-text);font-weight:600;cursor:pointer;min-height:48px;display:inline-flex;align-items:center;text-decoration:none}
 .where{font-family:system-ui,sans-serif;color:var(--muted);margin:16px 0 0;font-size:.9rem}
-.chips{display:flex;gap:8px;margin:10px 0 6px;flex-wrap:wrap}
-.chip{background:var(--chip);color:var(--text);padding:8px 14px;font-size:.85rem;border-radius:999px;font-weight:500;min-height:0}
-.chip.on{background:var(--accent);color:var(--accent-text)}
-.msg{font-family:system-ui,sans-serif;color:var(--muted);padding:24px 0}
+.msg{font-family:system-ui,sans-serif;color:var(--muted);padding:16px 0}
+.search{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.search .btn{background:var(--chip);color:var(--text);font-size:.88rem;min-height:40px;padding:0 14px}
 .card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:18px;margin-top:14px}
 .card h2{font-size:1.2rem;margin:2px 0 0}
 .tag{font-family:system-ui,sans-serif;font-size:.72rem;text-transform:uppercase;letter-spacing:.8px;color:var(--accent);font-weight:700}
 .meta{display:flex;flex-wrap:wrap;gap:6px 14px;font-family:system-ui,sans-serif;font-size:.82rem;color:var(--muted);margin:6px 0 8px}
 .card p{margin:0 0 10px;font-size:.95rem}
-.links{display:flex;gap:16px;font-family:system-ui,sans-serif;font-size:.9rem}
-.card a{color:var(--accent);font-weight:600;text-decoration:none}
+.card a{font-family:system-ui,sans-serif;font-size:.9rem;color:var(--accent);font-weight:600;text-decoration:none;margin-right:16px}
+.more{margin-top:16px;background:var(--chip);color:var(--text)}
 .note{font-family:system-ui,sans-serif;font-size:.78rem;color:var(--muted);margin-top:22px}
 </style>
 </head>
 <body>
 <main>
   <h1>🛣️ Wayfarer</h1>
-  <p class="sub">Enter a US zip code to find scenic drives and viewpoints nearby.</p>
+  <p class="sub">Enter a US zip code to find scenic drives near you.</p>
   <form id="f">
     <input id="zip" inputmode="numeric" maxlength="5" placeholder="Zip code" autocomplete="postal-code" aria-label="Zip code">
-    <select id="rad" aria-label="Search radius"><option value="25">25 mi</option><option value="50" selected>50 mi</option><option value="100">100 mi</option></select>
     <button id="go">Explore</button>
   </form>
   <p class="where" id="where" hidden></p>
-  <div class="chips" id="chips" hidden></div>
+  <div id="search" hidden>
+    <h3>Search for local gems</h3>
+    <div class="search" id="slinks"></div>
+  </div>
   <div id="out"></div>
-  <p class="note" id="note" hidden>Data from OpenStreetMap contributors (via Overpass API) and Zippopotam.us. Coverage varies by area, so check conditions and closures before you go.</p>
+  <p class="note" id="note" hidden>Distances are straight-line miles from your zip to each route's start or midpoint (approximate), so real driving distance is longer. Check road closures and seasonal gates before you go.</p>
 </main>
 <script>
 (function(){
-  var out=document.getElementById('out'),zip=document.getElementById('zip'),go=document.getElementById('go'),
-      rad=document.getElementById('rad'),chips=document.getElementById('chips'),note=document.getElementById('note'),
-      where=document.getElementById('where');
-  var items=[],filter='All';
-  var MIRRORS=['https://overpass-api.de/api/interpreter','https://overpass.private.coffee/api/interpreter','https://overpass.kumi.systems/api/interpreter'];
-  var maxKm=80;
+  // [name, state, lat, lon, length, best season, description]
+  var D=[
+  ["George Washington Memorial Parkway","VA/DC/MD",38.88,-77.07,"25 mi","Spring & fall","Riverside parkway past the Potomac, Mount Vernon and monuments."],
+  ["Skyline Drive","VA",38.52,-78.38,"105 mi","Mid-Oct foliage","Ridge-top road through Shenandoah National Park with 70+ overlooks."],
+  ["Blue Ridge Parkway","VA/NC",37.26,-79.94,"469 mi","Fall & spring","America's favorite drive, winding along the Appalachian crest."],
+  ["Chesapeake Bay Bridge-Tunnel","VA",37.03,-76.08,"23 mi","Spring–fall","Bridges and tunnels crossing the mouth of the Chesapeake Bay."],
+  ["Highland Scenic Highway","WV",38.3,-80.3,"43 mi","Fall","High-elevation Allegheny road with bogs, overlooks and forest."],
+  ["Kancamagus Highway","NH",44.0,-71.4,"35 mi","Late Sep–early Oct","White Mountains classic known for peak foliage."],
+  ["Route 100","VT",43.9,-72.8,"216 mi","Fall","Green Mountain backroad through villages, farms and ski towns."],
+  ["Acadia Park Loop Road","ME",44.35,-68.22,"27 mi","Summer & fall","Granite coastline, Cadillac Mountain and ocean views."],
+  ["Mohawk Trail","MA",42.63,-72.87,"63 mi","Fall","Historic route across the Berkshires and Deerfield River valley."],
+  ["Taconic State Parkway","NY",41.75,-73.7,"104 mi","Fall","Landscaped Hudson Valley parkway with rolling hills and farmland."],
+  ["Whiteface Veterans Memorial Highway","NY",44.37,-73.89,"5 mi","Summer & fall","Climbs to a summit with sweeping Adirondack views."],
+  ["Newfound Gap Road","TN/NC",35.61,-83.43,"31 mi","Spring & fall","Crosses the Great Smoky Mountains with excellent pull-offs."],
+  ["Cherohala Skyway","TN/NC",35.35,-83.95,"43 mi","Fall","Remote high-country road through two national forests."],
+  ["Tail of the Dragon (US 129)","NC/TN",35.47,-83.95,"11 mi","Spring–fall","318 curves, a driver's favorite in the Smokies."],
+  ["Natchez Trace Parkway","MS/AL/TN",34.26,-88.7,"444 mi","Spring & fall","Quiet, commercial-free historic road with forest and history stops."],
+  ["Overseas Highway (US 1)","FL",24.75,-81.0,"113 mi","Winter & spring","Island-hopping drive over 42 bridges to Key West."],
+  ["Tunnel of Trees (M-119)","MI",45.43,-85.0,"20 mi","Fall","Tree-canopied road along Lake Michigan's shoreline."],
+  ["Great River Road","WI/MN/IA",43.3,-91.2,"~3,000 mi","Fall","Bluffs and river views along the upper Mississippi."],
+  ["North Shore Scenic Drive","MN",47.0,-91.4,"154 mi","Summer & fall","Lake Superior shoreline, waterfalls and lighthouses."],
+  ["Needles Highway","SD",43.85,-103.4,"14 mi","Late spring–fall","Granite spires, tunnels and tight turns in Custer State Park."],
+  ["Badlands Loop Road","SD",43.75,-102.0,"39 mi","Spring & fall","Eroded buttes and prairie with wildlife and sunset views."],
+  ["Talimena Scenic Drive","OK/AR",34.7,-94.7,"54 mi","Fall","Ouachita Mountain ridgeline with big forested vistas."],
+  ["Willow City Loop","TX",30.4,-98.7,"13 mi","Late March–April","Hill Country wildflower drive with ranch land and granite hills."],
+  ["Going-to-the-Sun Road","MT",48.7,-113.7,"50 mi","July–Sept","Glacier National Park's iconic alpine crossing."],
+  ["Beartooth Highway","MT/WY",45.0,-109.45,"68 mi","July–Sept","High-alpine road over a 10,947-ft pass."],
+  ["Grand Teton Park Road","WY",43.7,-110.7,"42 mi","Summer & fall","Face-on views of the Teton Range and Jackson Lake."],
+  ["Yellowstone Grand Loop","WY",44.46,-110.83,"142 mi","May–Oct","Geysers, canyons and wildlife in a figure-eight route."],
+  ["Trail Ridge Road","CO",40.4,-105.75,"48 mi","June–Sept","Highest continuous paved road in the US, above treeline."],
+  ["San Juan Skyway","CO",37.9,-107.8,"236 mi","Late Sep","Includes the Million Dollar Highway through the San Juan Mountains."],
+  ["Pikes Peak Highway","CO",38.84,-105.04,"19 mi","Summer","Paved route to a 14,115-ft summit."],
+  ["Scenic Byway 12","UT",37.8,-111.6,"124 mi","Spring & fall","Red-rock canyons and hoodoos between Bryce and Capitol Reef."],
+  ["Zion–Mount Carmel Highway","UT",37.2,-112.9,"10 mi","Spring & fall","Switchbacks and a historic tunnel through Zion's sandstone."],
+  ["Red Rock Scenic Byway (AZ 179)","AZ",34.85,-111.8,"7.5 mi","Spring & fall","Glowing red buttes on the way into Sedona."],
+  ["Desert View Drive","AZ",36.05,-111.9,"25 mi","Spring & fall","Grand Canyon's East Rim with a string of overlooks."],
+  ["Highway 1 – Big Sur","CA",36.27,-121.8,"90 mi","Spring & fall","Cliffside Pacific coast with bridges and redwoods."],
+  ["17-Mile Drive","CA",36.58,-121.95,"17 mi","Year-round","Monterey Peninsula coastline, Pebble Beach and the Lone Cypress."],
+  ["Tioga Road","CA",37.88,-119.3,"39 mi","June–Oct","High Sierra drive through Yosemite's granite domes and meadows."],
+  ["Columbia River Historic Highway","OR",45.55,-122.1,"75 mi","Spring–fall","Waterfalls and Gorge views, including Multnomah Falls."],
+  ["Mount Hood Loop","OR",45.4,-121.7,"~150 mi","Summer & fall","Loop around Oregon's tallest peak with orchards and alpine views."],
+  ["North Cascades Highway (SR 20)","WA",48.5,-120.9,"~130 mi","July–Oct","Turquoise lakes and jagged peaks, closed in winter."],
+  ["Hana Highway","HI",20.8,-156.1,"64 mi","Year-round","Rainforest, waterfalls and 600+ curves on Maui's coast."],
+  ["Seward Highway","AK",60.9,-149.5,"125 mi","Summer","Mountains, glaciers and whale-watching along Turnagain Arm."]
+  ];
+  var zip=document.getElementById('zip'),go=document.getElementById('go'),out=document.getElementById('out'),
+      where=document.getElementById('where'),note=document.getElementById('note'),
+      sbox=document.getElementById('search'),slinks=document.getElementById('slinks');
+  var ranked=[],shown=0;
   try{var z=localStorage.getItem('wf_zip');if(z)zip.value=z;}catch(e){}
-
-  function el(tag,cls,txt){var e=document.createElement(tag);if(cls)e.className=cls;if(txt!=null)e.textContent=txt;return e;}
+  function el(t,c,x){var e=document.createElement(t);if(c)e.className=c;if(x!=null)e.textContent=x;return e;}
   function msg(t){out.innerHTML='';out.appendChild(el('div','msg',t));}
-  function km(a,b,c,d){var r=Math.PI/180,x=(c-a)*r,y=(d-b)*r,
-    h=Math.sin(x/2)*Math.sin(x/2)+Math.cos(a*r)*Math.cos(c*r)*Math.sin(y/2)*Math.sin(y/2);
-    return 12742*Math.asin(Math.sqrt(h));}
+  function mi(a,b,c,d){var r=Math.PI/180,x=(c-a)*r,y=(d-b)*r,h=Math.sin(x/2)*Math.sin(x/2)+Math.cos(a*r)*Math.cos(c*r)*Math.sin(y/2)*Math.sin(y/2);return 7918*Math.asin(Math.sqrt(h));}
+  function link(parent,txt,href,cls){var a=el('a',cls||'',txt);a.href=href;a.target='_blank';a.rel='noopener noreferrer';parent.appendChild(a);return a;}
 
-  async function overpass(q){
-    var err;
-    for(var i=0;i<MIRRORS.length;i++){
-      var ctl=new AbortController(),tm=setTimeout(function(c){return function(){c.abort();};}(ctl),30000);
-      try{
-        var r=await fetch(MIRRORS[i]+'?data='+encodeURIComponent(q),{signal:ctl.signal});
-        if(!r.ok)throw new Error('HTTP '+r.status);
-        var j=await r.json();
-        if(j.remark&&/error|timed out/i.test(j.remark)&&!(j.elements&&j.elements.length))throw new Error(j.remark);
-        clearTimeout(tm);return j;
-      }catch(e){clearTimeout(tm);err=e;}
-    }
-    throw err;
+  function searchLinks(v,place){
+    slinks.innerHTML='';
+    var loc=place||v;
+    [['Google: scenic drives','https://www.google.com/search?q='+encodeURIComponent('best scenic drives near '+v)],
+     ['Google: scenic overlooks','https://www.google.com/search?q='+encodeURIComponent('best scenic overlooks near '+v)],
+     ['Maps: scenic viewpoints','https://www.google.com/maps/search/'+encodeURIComponent('scenic viewpoint near '+loc)],
+     ['Maps: scenic byways','https://www.google.com/maps/search/'+encodeURIComponent('scenic byway near '+loc)]
+    ].forEach(function(s){var a=link(slinks,s[0],s[1],'btn');});
+    sbox.hidden=false;
   }
 
-  function wikiUrl(t){
-    if(!t)return null;var i=t.indexOf(':');if(i<1)return null;
-    return 'https://'+encodeURIComponent(t.slice(0,i))+'.wikipedia.org/wiki/'+encodeURIComponent(t.slice(i+1).replace(/ /g,'_'));
-  }
-
-  function build(data,lat,lon){
-    var seen={},list=[];
-    (data.elements||[]).forEach(function(e){
-      var t=e.tags||{},name=t.name;if(!name)return;
-      var la=e.lat!=null?e.lat:(e.center&&e.center.lat),lo=e.lon!=null?e.lon:(e.center&&e.center.lon);
-      if(la==null||lo==null)return;
-      var type=t.tourism==='viewpoint'?'Viewpoint':'Drive';
-      var key=type+'|'+name.toLowerCase();if(seen[key])return;seen[key]=1;
-      var d=km(lat,lon,la,lo);if(d>maxKm)return;
-      var notable=!!(t.wikipedia||t.wikidata||t.description||t.website);
-      list.push({name:name,type:type,lat:la,lon:lo,km:d,notable:notable,score:d-(notable?40:0),
-        ele:t.ele,desc:t.description,web:t.website,wiki:wikiUrl(t.wikipedia),ref:t.ref||t.network});
-    });
-    list.sort(function(a,b){return a.score-b.score;});
-    var v=list.filter(function(i){return i.type==='Viewpoint';}).slice(0,10);
-    var d=list.filter(function(i){return i.type==='Drive';}).slice(0,10);
-    return v.concat(d).sort(function(a,b){return a.score-b.score;});
-  }
-
-  function render(){
-    out.innerHTML='';
-    var list=items.filter(function(i){return filter==='All'||i.type===filter;});
-    if(!list.length){msg('Nothing found in this category. Try a larger radius.');return;}
-    list.forEach(function(i){
-      var c=el('div','card');
-      c.appendChild(el('div','tag',i.type));c.appendChild(el('h2','',i.name));
+  function more(){
+    var old=out.querySelector('.more');if(old)old.remove();
+    ranked.slice(shown,shown+8).forEach(function(i){
+      var c=el('div','card');c.appendChild(el('div','tag','Scenic drive · '+i[1]));c.appendChild(el('h2','',i[0]));
       var m=el('div','meta');
-      m.appendChild(el('span','',Math.round(i.km*0.621)+' mi away'));
-      if(i.ele)m.appendChild(el('span','',i.ele+' m elevation'));
-      if(i.ref)m.appendChild(el('span','',i.ref));
-      if(i.notable)m.appendChild(el('span','','★ Well documented'));
-      c.appendChild(m);
-      if(i.desc)c.appendChild(el('p','',i.desc));
-      var l=el('div','links');
-      function link(txt,href){var a=el('a','',txt);a.href=href;a.target='_blank';a.rel='noopener noreferrer';l.appendChild(a);}
-      link('Open in Maps →','https://www.google.com/maps/search/?api=1&query='+i.lat+','+i.lon);
-      if(i.wiki)link('Wikipedia',i.wiki);
-      if(i.web&&/^https?:\/\//.test(i.web))link('Website',i.web);
-      c.appendChild(l);out.appendChild(c);
+      [Math.round(i.d)+' mi away',i[4]+' long','Best: '+i[5]].forEach(function(x){m.appendChild(el('span','',x));});
+      c.appendChild(m);c.appendChild(el('p','',i[6]));
+      link(c,'Open in Maps →','https://www.google.com/maps/search/'+encodeURIComponent(i[0]+', '+i[1]));
+      link(c,'Search Google','https://www.google.com/search?q='+encodeURIComponent(i[0]+' scenic drive'));
+      out.appendChild(c);
     });
-  }
-
-  function renderChips(){
-    chips.innerHTML='';chips.hidden=false;
-    ['All','Drive','Viewpoint'].forEach(function(f){
-      var b=el('button','chip'+(f===filter?' on':''),f==='All'?'All':f+'s');
-      b.type='button';b.onclick=function(){filter=f;renderChips();render();};chips.appendChild(b);
-    });
+    shown=Math.min(shown+8,ranked.length);
+    if(shown<ranked.length){var b=el('button','btn more','Show more drives');b.type='button';b.onclick=more;out.appendChild(b);}
   }
 
   document.getElementById('f').addEventListener('submit',async function(ev){
@@ -139,29 +135,17 @@ button:disabled{opacity:.6}
     var v=zip.value.trim();
     if(!/^\d{5}$/.test(v)){msg('Please enter a valid 5-digit zip code.');return;}
     try{localStorage.setItem('wf_zip',v);}catch(e){}
-    go.disabled=true;chips.hidden=true;note.hidden=true;where.hidden=true;msg('Looking up '+v+'…');
+    go.disabled=true;where.hidden=true;note.hidden=true;sbox.hidden=true;msg('Looking up '+v+'…');
+    searchLinks(v,null);
     try{
-      var zr=await fetch('https://api.zippopotam.us/us/'+v);
-      if(!zr.ok){msg('Zip code not found. Please check it and try again.');go.disabled=false;return;}
-      var zj=await zr.json(),p=zj.places[0],lat=parseFloat(p.latitude),lon=parseFloat(p.longitude);
-      where.textContent='Near '+p['place name']+', '+p['state abbreviation'];where.hidden=false;
-      msg('Scouting scenic spots… this can take a few seconds.');
-      var mi=parseInt(rad.value,10);maxKm=mi*1.609;
-      var dl=maxKm/111,dn=dl/Math.cos(lat*Math.PI/180);
-      var bb='('+(lat-dl).toFixed(4)+','+(lon-dn).toFixed(4)+','+(lat+dl).toFixed(4)+','+(lon+dn).toFixed(4)+')';
-      var qv='[out:json][timeout:25];node["tourism"="viewpoint"]["name"]'+bb+';out 300;';
-      var qd='[out:json][timeout:25];(relation["route"="road"]["name"~"Scenic|Parkway|Byway|Skyline|Overlook",i]'+bb+';way["scenic"="yes"]["highway"]["name"]'+bb+';);out center tags 300;';
-      var vEls=[],dEls=[],dErr=null;filter='All';
-      var vd=await overpass(qv);vEls=vd.elements||[];
-      items=build({elements:vEls},lat,lon);
-      if(items.length){renderChips();render();}else{msg('Looking for scenic drives…');}
-      try{var dd=await overpass(qd);dEls=dd.elements||[];}catch(e2){dErr=e2;}
-      items=build({elements:vEls.concat(dEls)},lat,lon);
-      if(!items.length){msg('No named scenic spots found. Try a larger radius.');}
-      else{renderChips();render();}
-      note.hidden=false;
-      if(dErr){var n=el('div','msg','Scenic drives couldn’t be loaded this time ('+(dErr.message||'network error')+'). Tap Explore to retry.');out.insertBefore(n,out.firstChild);}
-    }catch(e){msg('Couldn’t load results ('+((e&&e.message)||'network error')+'). The map data service may be busy, so please try again in a moment.');}
+      var r=await fetch('https://api.zippopotam.us/us/'+v);
+      if(!r.ok){msg('Zip code not found. Please check it and try again.');sbox.hidden=true;go.disabled=false;return;}
+      var j=await r.json(),p=j.places[0],lat=parseFloat(p.latitude),lon=parseFloat(p.longitude);
+      var place=p['place name']+', '+p['state abbreviation'];
+      where.textContent='Near '+place;where.hidden=false;searchLinks(v,place);
+      ranked=D.map(function(d){var c=d.slice();c.d=mi(lat,lon,d[2],d[3]);return c;}).sort(function(a,b){return a.d-b.d;});
+      out.innerHTML='';shown=0;more();note.hidden=false;
+    }catch(e){msg('Couldn’t look up that zip code right now, but the search buttons above still work.');}
     go.disabled=false;
   });
 })();
