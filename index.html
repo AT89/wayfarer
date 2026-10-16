@@ -4,76 +4,120 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Wayfarer – Scenic Drives Near You</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🛣️</text></svg>">
 <style>
-:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
---bg:#f6f1e7;--surface:#fffdf8;--text:#1f2a24;--muted:#66705f;--accent:#2f6b4f;--accent-text:#fff;--border:#e2dac8;--chip:#ece4d1}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#141a16;--surface:#1c241f;--text:#ecece3;--muted:#9aa591;--accent:#7cc79c;--accent-text:#10201a;--border:#2c372f;--chip:#26312a}}
-:root[data-theme="dark"]{--bg:#141a16;--surface:#1c241f;--text:#ecece3;--muted:#9aa591;--accent:#7cc79c;--accent-text:#10201a;--border:#2c372f;--chip:#26312a}
-html{scroll-padding-top:env(safe-area-inset-top,0px)}
+:root{--bg:#f6f1e7;--surface:#fffdf8;--text:#1f2a24;--muted:#66705f;--accent:#2f6b4f;--accent-text:#fff;--border:#e2dac8;--chip:#ece4d1}
+@media (prefers-color-scheme:dark){:root{--bg:#141a16;--surface:#1c241f;--text:#ecece3;--muted:#9aa591;--accent:#7cc79c;--accent-text:#10201a;--border:#2c372f;--chip:#26312a}}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--text);font-family:Georgia,"Times New Roman",serif;line-height:1.5}
 main{max-width:720px;margin:0 auto;padding:28px 18px 56px}
 h1{font-size:2rem;margin:0 0 4px;letter-spacing:-.5px}
 .sub{color:var(--muted);margin:0 0 22px;font-family:system-ui,sans-serif;font-size:.95rem}
 form{display:flex;gap:8px}
-input{flex:1;min-width:0;padding:14px 16px;font-size:1.1rem;border:1px solid var(--border);border-radius:12px;background:var(--surface);color:var(--text);letter-spacing:2px}
-button{font-family:system-ui,sans-serif;font-size:1rem;border:0;border-radius:12px;padding:0 20px;background:var(--accent);color:var(--accent-text);font-weight:600;cursor:pointer}
+input,select{padding:14px 12px;font-size:1.05rem;border:1px solid var(--border);border-radius:12px;background:var(--surface);color:var(--text)}
+input{flex:1;min-width:0;letter-spacing:2px;padding-left:16px}
+select{font-family:system-ui,sans-serif;font-size:.9rem}
+button{font-family:system-ui,sans-serif;font-size:1rem;border:0;border-radius:12px;padding:0 20px;background:var(--accent);color:var(--accent-text);font-weight:600;cursor:pointer;min-height:48px}
 button:disabled{opacity:.6}
-.chips{display:flex;gap:8px;margin:18px 0 6px;flex-wrap:wrap}
-.chip{background:var(--chip);color:var(--text);padding:8px 14px;font-size:.85rem;border-radius:999px;font-weight:500}
+.where{font-family:system-ui,sans-serif;color:var(--muted);margin:16px 0 0;font-size:.9rem}
+.chips{display:flex;gap:8px;margin:10px 0 6px;flex-wrap:wrap}
+.chip{background:var(--chip);color:var(--text);padding:8px 14px;font-size:.85rem;border-radius:999px;font-weight:500;min-height:0}
 .chip.on{background:var(--accent);color:var(--accent-text)}
 .msg{font-family:system-ui,sans-serif;color:var(--muted);padding:24px 0}
 .card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:18px;margin-top:14px}
-.top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
-.card h2{font-size:1.2rem;margin:0}
+.card h2{font-size:1.2rem;margin:2px 0 0}
 .tag{font-family:system-ui,sans-serif;font-size:.72rem;text-transform:uppercase;letter-spacing:.8px;color:var(--accent);font-weight:700}
-.meta{display:flex;flex-wrap:wrap;gap:6px 14px;font-family:system-ui,sans-serif;font-size:.82rem;color:var(--muted);margin:6px 0 10px}
-.card p{margin:0 0 10px}
-.tip{font-size:.92rem;color:var(--muted);border-left:3px solid var(--accent);padding-left:10px;margin:10px 0}
-.card a{font-family:system-ui,sans-serif;font-size:.9rem;color:var(--accent);font-weight:600;text-decoration:none}
+.meta{display:flex;flex-wrap:wrap;gap:6px 14px;font-family:system-ui,sans-serif;font-size:.82rem;color:var(--muted);margin:6px 0 8px}
+.card p{margin:0 0 10px;font-size:.95rem}
+.links{display:flex;gap:16px;font-family:system-ui,sans-serif;font-size:.9rem}
+.card a{color:var(--accent);font-weight:600;text-decoration:none}
 .note{font-family:system-ui,sans-serif;font-size:.78rem;color:var(--muted);margin-top:22px}
 </style>
 </head>
 <body>
 <main>
   <h1>🛣️ Wayfarer</h1>
-  <p class="sub">Enter a US zip code to find the best scenic drives and viewpoints nearby.</p>
+  <p class="sub">Enter a US zip code to find scenic drives and viewpoints nearby.</p>
   <form id="f">
     <input id="zip" inputmode="numeric" maxlength="5" placeholder="Zip code" autocomplete="postal-code" aria-label="Zip code">
+    <select id="rad" aria-label="Search radius"><option value="25">25 mi</option><option value="50" selected>50 mi</option><option value="100">100 mi</option></select>
     <button id="go">Explore</button>
   </form>
+  <p class="where" id="where" hidden></p>
   <div class="chips" id="chips" hidden></div>
   <div id="out"></div>
-  <p class="note" id="note" hidden>Suggestions are AI-generated from general knowledge. Check road closures, seasonal gates and conditions before you go.</p>
+  <p class="note" id="note" hidden>Data from OpenStreetMap contributors (via Overpass API) and Zippopotam.us. Coverage varies by area, so check conditions and closures before you go.</p>
 </main>
 <script>
 (function(){
   var out=document.getElementById('out'),zip=document.getElementById('zip'),go=document.getElementById('go'),
-      chips=document.getElementById('chips'),note=document.getElementById('note');
-  var items=[],filter='All',sample=null;
+      rad=document.getElementById('rad'),chips=document.getElementById('chips'),note=document.getElementById('note'),
+      where=document.getElementById('where');
+  var items=[],filter='All';
+  var MIRRORS=['https://overpass-api.de/api/interpreter','https://overpass.kumi.systems/api/interpreter'];
   try{var z=localStorage.getItem('wf_zip');if(z)zip.value=z;}catch(e){}
-  claude.use('sample').then(function(s){sample=s;if(!s)msg('AI search is unavailable in this view. Open the page from your claude.ai artifact link.');}).catch(function(){});
 
-  function msg(t){out.innerHTML='';var d=document.createElement('div');d.className='msg';d.textContent=t;out.appendChild(d);}
   function el(tag,cls,txt){var e=document.createElement(tag);if(cls)e.className=cls;if(txt!=null)e.textContent=txt;return e;}
+  function msg(t){out.innerHTML='';out.appendChild(el('div','msg',t));}
+  function km(a,b,c,d){var r=Math.PI/180,x=(c-a)*r,y=(d-b)*r,
+    h=Math.sin(x/2)*Math.sin(x/2)+Math.cos(a*r)*Math.cos(c*r)*Math.sin(y/2)*Math.sin(y/2);
+    return 12742*Math.asin(Math.sqrt(h));}
+
+  async function overpass(q){
+    var err;
+    for(var i=0;i<MIRRORS.length;i++){
+      try{
+        var r=await fetch(MIRRORS[i],{method:'POST',body:'data='+encodeURIComponent(q),headers:{'Content-Type':'application/x-www-form-urlencoded'}});
+        if(!r.ok)throw new Error('HTTP '+r.status);
+        return await r.json();
+      }catch(e){err=e;}
+    }
+    throw err;
+  }
+
+  function wikiUrl(t){
+    if(!t)return null;var i=t.indexOf(':');if(i<1)return null;
+    return 'https://'+encodeURIComponent(t.slice(0,i))+'.wikipedia.org/wiki/'+encodeURIComponent(t.slice(i+1).replace(/ /g,'_'));
+  }
+
+  function build(data,lat,lon){
+    var seen={},list=[];
+    (data.elements||[]).forEach(function(e){
+      var t=e.tags||{},name=t.name;if(!name)return;
+      var la=e.lat!=null?e.lat:(e.center&&e.center.lat),lo=e.lon!=null?e.lon:(e.center&&e.center.lon);
+      if(la==null||lo==null)return;
+      var type=t.tourism==='viewpoint'?'Viewpoint':'Drive';
+      var key=type+'|'+name.toLowerCase();if(seen[key])return;seen[key]=1;
+      var d=km(lat,lon,la,lo),notable=!!(t.wikipedia||t.wikidata||t.description||t.website);
+      list.push({name:name,type:type,lat:la,lon:lo,km:d,notable:notable,score:d-(notable?40:0),
+        ele:t.ele,desc:t.description,web:t.website,wiki:wikiUrl(t.wikipedia),ref:t.ref||t.network});
+    });
+    list.sort(function(a,b){return a.score-b.score;});
+    var v=list.filter(function(i){return i.type==='Viewpoint';}).slice(0,10);
+    var d=list.filter(function(i){return i.type==='Drive';}).slice(0,10);
+    return v.concat(d).sort(function(a,b){return a.score-b.score;});
+  }
 
   function render(){
     out.innerHTML='';
     var list=items.filter(function(i){return filter==='All'||i.type===filter;});
-    if(!list.length){msg('Nothing in this category.');return;}
+    if(!list.length){msg('Nothing found in this category. Try a larger radius.');return;}
     list.forEach(function(i){
-      var c=el('div','card'),t=el('div','top'),l=el('div');
-      l.appendChild(el('div','tag',i.type));l.appendChild(el('h2','',i.name));
-      t.appendChild(l);c.appendChild(t);
+      var c=el('div','card');
+      c.appendChild(el('div','tag',i.type));c.appendChild(el('h2','',i.name));
       var m=el('div','meta');
-      [i.distance,i.duration,'Best: '+i.bestSeason].forEach(function(x){if(x)m.appendChild(el('span','',x));});
+      m.appendChild(el('span','',Math.round(i.km*0.621)+' mi away'));
+      if(i.ele)m.appendChild(el('span','',i.ele+' m elevation'));
+      if(i.ref)m.appendChild(el('span','',i.ref));
+      if(i.notable)m.appendChild(el('span','','★ Well documented'));
       c.appendChild(m);
-      c.appendChild(el('p','',i.description));
-      if(i.tip)c.appendChild(el('div','tip',i.tip));
-      var a=el('a','','Open in Maps →');
-      a.href='https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(i.name+' '+(i.location||''));
-      a.target='_blank';a.rel='noopener noreferrer';
-      c.appendChild(a);out.appendChild(c);
+      if(i.desc)c.appendChild(el('p','',i.desc));
+      var l=el('div','links');
+      function link(txt,href){var a=el('a','',txt);a.href=href;a.target='_blank';a.rel='noopener noreferrer';l.appendChild(a);}
+      link('Open in Maps →','https://www.google.com/maps/search/?api=1&query='+i.lat+','+i.lon);
+      if(i.wiki)link('Wikipedia',i.wiki);
+      if(i.web&&/^https?:\/\//.test(i.web))link('Website',i.web);
+      c.appendChild(l);out.appendChild(c);
     });
   }
 
@@ -81,8 +125,7 @@ button:disabled{opacity:.6}
     chips.innerHTML='';chips.hidden=false;
     ['All','Drive','Viewpoint'].forEach(function(f){
       var b=el('button','chip'+(f===filter?' on':''),f==='All'?'All':f+'s');
-      b.type='button';b.onclick=function(){filter=f;renderChips();render();};
-      chips.appendChild(b);
+      b.type='button';b.onclick=function(){filter=f;renderChips();render();};chips.appendChild(b);
     });
   }
 
@@ -90,21 +133,26 @@ button:disabled{opacity:.6}
     ev.preventDefault();
     var v=zip.value.trim();
     if(!/^\d{5}$/.test(v)){msg('Please enter a valid 5-digit zip code.');return;}
-    if(!sample){msg('AI search is unavailable in this view.');return;}
     try{localStorage.setItem('wf_zip',v);}catch(e){}
-    go.disabled=true;chips.hidden=true;note.hidden=true;msg('Scouting the best roads near '+v+'…');
-    var prompt='You are a local scenic-travel expert. For US zip code '+v+', list 8 of the best scenic drives and scenic viewpoints/destinations within about 2 hours of driving (mix of both, best first). Only include real, well-known places. '+
-      'Return ONLY a JSON array, no markdown. Each item: {"name":string,"type":"Drive" or "Viewpoint","location":"town/state","distance":"approx miles from the zip e.g. 45 mi","duration":"drive time or route length","bestSeason":string,"description":"2 sentences on what makes it special","tip":"one practical tip (timing, stops, parking, closures)"}.';
+    go.disabled=true;chips.hidden=true;note.hidden=true;where.hidden=true;msg('Looking up '+v+'…');
     try{
-      var r=await sample.json(prompt);
-      if(!Array.isArray(r)||!r.length)throw new Error('empty');
-      items=r.map(function(i){return{name:String(i.name||''),type:i.type==='Viewpoint'?'Viewpoint':'Drive',location:String(i.location||''),distance:String(i.distance||''),duration:String(i.duration||''),bestSeason:String(i.bestSeason||'Year-round'),description:String(i.description||''),tip:String(i.tip||'')};}).filter(function(i){return i.name;});
-      filter='All';renderChips();render();note.hidden=false;
-    }catch(e){
-      if(e&&e.code==='not_granted')msg('Permission was declined, so recommendations can’t load.');
-      else if(e&&e.code==='rate_limited')msg('Too many requests right now. Try again in a moment.');
-      else msg('Couldn’t load recommendations. Please try again.');
-    }
+      var zr=await fetch('https://api.zippopotam.us/us/'+v);
+      if(!zr.ok){msg('Zip code not found. Please check it and try again.');go.disabled=false;return;}
+      var zj=await zr.json(),p=zj.places[0],lat=parseFloat(p.latitude),lon=parseFloat(p.longitude);
+      where.textContent='Near '+p['place name']+', '+p['state abbreviation'];where.hidden=false;
+      msg('Scouting scenic spots… this can take a few seconds.');
+      var R=Math.round(parseInt(rad.value,10)*1609.34),at='(around:'+R+','+lat+','+lon+')';
+      var q='[out:json][timeout:25];('+
+        'node["tourism"="viewpoint"]["name"]'+at+';'+
+        'relation["route"="road"]["name"~"Scenic|Parkway|Byway|Skyline|Overlook",i]'+at+';'+
+        'way["scenic"="yes"]["highway"]["name"]'+at+';'+
+        ');out center tags 400;';
+      var data=await overpass(q);
+      items=build(data,lat,lon);filter='All';
+      if(!items.length){msg('No named scenic spots found. Try a larger radius.');}
+      else{renderChips();render();}
+      note.hidden=false;
+    }catch(e){msg('Couldn’t load results. The map data service may be busy, so please try again in a moment.');}
     go.disabled=false;
   });
 })();
