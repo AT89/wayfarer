@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Wayfarer – Scenic Drives Near You</title>
+<style>
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+--bg:#f6f1e7;--surface:#fffdf8;--text:#1f2a24;--muted:#66705f;--accent:#2f6b4f;--accent-text:#fff;--border:#e2dac8;--chip:#ece4d1}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#141a16;--surface:#1c241f;--text:#ecece3;--muted:#9aa591;--accent:#7cc79c;--accent-text:#10201a;--border:#2c372f;--chip:#26312a}}
+:root[data-theme="dark"]{--bg:#141a16;--surface:#1c241f;--text:#ecece3;--muted:#9aa591;--accent:#7cc79c;--accent-text:#10201a;--border:#2c372f;--chip:#26312a}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:Georgia,"Times New Roman",serif;line-height:1.5}
+main{max-width:720px;margin:0 auto;padding:28px 18px 56px}
+h1{font-size:2rem;margin:0 0 4px;letter-spacing:-.5px}
+.sub{color:var(--muted);margin:0 0 22px;font-family:system-ui,sans-serif;font-size:.95rem}
+form{display:flex;gap:8px}
+input{flex:1;min-width:0;padding:14px 16px;font-size:1.1rem;border:1px solid var(--border);border-radius:12px;background:var(--surface);color:var(--text);letter-spacing:2px}
+button{font-family:system-ui,sans-serif;font-size:1rem;border:0;border-radius:12px;padding:0 20px;background:var(--accent);color:var(--accent-text);font-weight:600;cursor:pointer}
+button:disabled{opacity:.6}
+.chips{display:flex;gap:8px;margin:18px 0 6px;flex-wrap:wrap}
+.chip{background:var(--chip);color:var(--text);padding:8px 14px;font-size:.85rem;border-radius:999px;font-weight:500}
+.chip.on{background:var(--accent);color:var(--accent-text)}
+.msg{font-family:system-ui,sans-serif;color:var(--muted);padding:24px 0}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:18px;margin-top:14px}
+.top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+.card h2{font-size:1.2rem;margin:0}
+.tag{font-family:system-ui,sans-serif;font-size:.72rem;text-transform:uppercase;letter-spacing:.8px;color:var(--accent);font-weight:700}
+.meta{display:flex;flex-wrap:wrap;gap:6px 14px;font-family:system-ui,sans-serif;font-size:.82rem;color:var(--muted);margin:6px 0 10px}
+.card p{margin:0 0 10px}
+.tip{font-size:.92rem;color:var(--muted);border-left:3px solid var(--accent);padding-left:10px;margin:10px 0}
+.card a{font-family:system-ui,sans-serif;font-size:.9rem;color:var(--accent);font-weight:600;text-decoration:none}
+.note{font-family:system-ui,sans-serif;font-size:.78rem;color:var(--muted);margin-top:22px}
+</style>
+</head>
+<body>
+<main>
+  <h1>🛣️ Wayfarer</h1>
+  <p class="sub">Enter a US zip code to find the best scenic drives and viewpoints nearby.</p>
+  <form id="f">
+    <input id="zip" inputmode="numeric" maxlength="5" placeholder="Zip code" autocomplete="postal-code" aria-label="Zip code">
+    <button id="go">Explore</button>
+  </form>
+  <div class="chips" id="chips" hidden></div>
+  <div id="out"></div>
+  <p class="note" id="note" hidden>Suggestions are AI-generated from general knowledge. Check road closures, seasonal gates and conditions before you go.</p>
+</main>
+<script>
+(function(){
+  var out=document.getElementById('out'),zip=document.getElementById('zip'),go=document.getElementById('go'),
+      chips=document.getElementById('chips'),note=document.getElementById('note');
+  var items=[],filter='All',sample=null;
+  try{var z=localStorage.getItem('wf_zip');if(z)zip.value=z;}catch(e){}
+  claude.use('sample').then(function(s){sample=s;if(!s)msg('AI search is unavailable in this view. Open the page from your claude.ai artifact link.');}).catch(function(){});
+
+  function msg(t){out.innerHTML='';var d=document.createElement('div');d.className='msg';d.textContent=t;out.appendChild(d);}
+  function el(tag,cls,txt){var e=document.createElement(tag);if(cls)e.className=cls;if(txt!=null)e.textContent=txt;return e;}
+
+  function render(){
+    out.innerHTML='';
+    var list=items.filter(function(i){return filter==='All'||i.type===filter;});
+    if(!list.length){msg('Nothing in this category.');return;}
+    list.forEach(function(i){
+      var c=el('div','card'),t=el('div','top'),l=el('div');
+      l.appendChild(el('div','tag',i.type));l.appendChild(el('h2','',i.name));
+      t.appendChild(l);c.appendChild(t);
+      var m=el('div','meta');
+      [i.distance,i.duration,'Best: '+i.bestSeason].forEach(function(x){if(x)m.appendChild(el('span','',x));});
+      c.appendChild(m);
+      c.appendChild(el('p','',i.description));
+      if(i.tip)c.appendChild(el('div','tip',i.tip));
+      var a=el('a','','Open in Maps →');
+      a.href='https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(i.name+' '+(i.location||''));
+      a.target='_blank';a.rel='noopener noreferrer';
+      c.appendChild(a);out.appendChild(c);
+    });
+  }
+
+  function renderChips(){
+    chips.innerHTML='';chips.hidden=false;
+    ['All','Drive','Viewpoint'].forEach(function(f){
+      var b=el('button','chip'+(f===filter?' on':''),f==='All'?'All':f+'s');
+      b.type='button';b.onclick=function(){filter=f;renderChips();render();};
+      chips.appendChild(b);
+    });
+  }
+
+  document.getElementById('f').addEventListener('submit',async function(ev){
+    ev.preventDefault();
+    var v=zip.value.trim();
+    if(!/^\d{5}$/.test(v)){msg('Please enter a valid 5-digit zip code.');return;}
+    if(!sample){msg('AI search is unavailable in this view.');return;}
+    try{localStorage.setItem('wf_zip',v);}catch(e){}
+    go.disabled=true;chips.hidden=true;note.hidden=true;msg('Scouting the best roads near '+v+'…');
+    var prompt='You are a local scenic-travel expert. For US zip code '+v+', list 8 of the best scenic drives and scenic viewpoints/destinations within about 2 hours of driving (mix of both, best first). Only include real, well-known places. '+
+      'Return ONLY a JSON array, no markdown. Each item: {"name":string,"type":"Drive" or "Viewpoint","location":"town/state","distance":"approx miles from the zip e.g. 45 mi","duration":"drive time or route length","bestSeason":string,"description":"2 sentences on what makes it special","tip":"one practical tip (timing, stops, parking, closures)"}.';
+    try{
+      var r=await sample.json(prompt);
+      if(!Array.isArray(r)||!r.length)throw new Error('empty');
+      items=r.map(function(i){return{name:String(i.name||''),type:i.type==='Viewpoint'?'Viewpoint':'Drive',location:String(i.location||''),distance:String(i.distance||''),duration:String(i.duration||''),bestSeason:String(i.bestSeason||'Year-round'),description:String(i.description||''),tip:String(i.tip||'')};}).filter(function(i){return i.name;});
+      filter='All';renderChips();render();note.hidden=false;
+    }catch(e){
+      if(e&&e.code==='not_granted')msg('Permission was declined, so recommendations can’t load.');
+      else if(e&&e.code==='rate_limited')msg('Too many requests right now. Try again in a moment.');
+      else msg('Couldn’t load recommendations. Please try again.');
+    }
+    go.disabled=false;
+  });
+})();
+</script>
+</body>
+</html>
